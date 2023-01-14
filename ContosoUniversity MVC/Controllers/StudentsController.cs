@@ -20,11 +20,26 @@ namespace ContosoUniversity_MVC.Controllers
         }
 
         // GET: Students
-        public async Task<IActionResult> Index(string sortOrder, string searchString)
+        public async Task<IActionResult> Index(
+            string sortOrder,
+            string currentFilter,
+            string searchString,
+            int? pageNumber)
         {
             // configure the column heading hyperlinks.
+            ViewData["CurrentSort"] = sortOrder;
             ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
+
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
             ViewData["CurrentFilter"] = searchString;
 
             IQueryable<Student> students = from s in _context.Students
@@ -35,7 +50,7 @@ namespace ContosoUniversity_MVC.Controllers
                 students = students.Where(s => s.LastName.Contains(searchString)
                                             || s.FirstMidName.Contains(searchString));
             }
-
+            
             switch (sortOrder)
             {
                 case "name_desc":
@@ -52,7 +67,8 @@ namespace ContosoUniversity_MVC.Controllers
                     break;
             }
 
-            return View(await students.AsNoTracking().ToListAsync());
+            int pageSize = 3;
+            return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
         // GET: Students/Details/5
