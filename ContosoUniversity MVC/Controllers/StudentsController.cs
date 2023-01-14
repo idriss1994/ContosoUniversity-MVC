@@ -20,9 +20,31 @@ namespace ContosoUniversity_MVC.Controllers
         }
 
         // GET: Students
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string sortOrder)
         {
-            return View(await _context.Students.ToListAsync());
+            // configure the column heading hyperlinks.
+            ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+            ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
+
+            IQueryable<Student> students = from s in _context.Students
+                         select s;
+            switch (sortOrder)
+            {
+                case "name_desc":
+                    students = students.OrderByDescending(s => s.LastName);
+                    break;
+                case "date_desc":
+                    students = students.OrderByDescending(s => s.EnrollmentDate);
+                    break;
+                case "Date":
+                    students = students.OrderBy(s => s.EnrollmentDate);
+                    break;
+                default:
+                    students = students.OrderBy(s => s.LastName);
+                    break;
+            }
+
+            return View(await students.AsNoTracking().ToListAsync());
         }
 
         // GET: Students/Details/5
@@ -131,7 +153,7 @@ namespace ContosoUniversity_MVC.Controllers
         }
 
         // GET: Students/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int? id, bool? saveChangeError = false)
         {
             if (id == null)
             {
@@ -139,10 +161,17 @@ namespace ContosoUniversity_MVC.Controllers
             }
 
             var student = await _context.Students
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.ID == id);
             if (student == null)
             {
                 return NotFound();
+            }
+
+            if (saveChangeError.GetValueOrDefault())
+            {
+                ViewData["ErrorMessage"] = "Delete failed. Try again, and if the problem persists " +
+                                           "see your system administrator.";
             }
 
             return View(student);
@@ -154,9 +183,20 @@ namespace ContosoUniversity_MVC.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var student = await _context.Students.FindAsync(id);
-            _context.Students.Remove(student);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            if (student == null)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            try
+            {
+                _context.Students.Remove(student);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException)
+            {
+                return RedirectToAction(nameof(Delegate), new { id, saveChangesError = true });
+            }
         }
 
         private bool StudentExists(int id)
