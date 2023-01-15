@@ -7,8 +7,9 @@ namespace ContosoUniversity_MVC.Data
     public static class DbInitializer
     {
         public static void Initialize(SchoolContext context)
-        {
-            context.Database.EnsureCreated();
+        { 
+            // When we use Migrations we did not need the EnsureCreated method.
+            //context.Database.EnsureCreated();
 
             if (context.Students.Any())
             {
