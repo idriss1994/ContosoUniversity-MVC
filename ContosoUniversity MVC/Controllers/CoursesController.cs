@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity_MVC.Data;
 using ContosoUniversity_MVC.Models;
+using System.Reflection.Metadata;
 
 namespace ContosoUniversity_MVC.Controllers
 {
@@ -160,6 +161,24 @@ namespace ContosoUniversity_MVC.Controllers
             _context.Courses.Remove(course);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        public IActionResult UpdateCourseCredits()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateCourseCredits(int? multiplier)
+        {
+            if (multiplier is not null)
+            {
+                ViewData["RowsAffected"] =
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "UPDATE Course SET Credits = Credits * {0}", multiplier);
+            }
+
+            return View();
         }
 
         private bool CourseExists(int id)
