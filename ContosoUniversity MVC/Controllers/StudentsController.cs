@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity_MVC.Data;
 using ContosoUniversity_MVC.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ContosoUniversity_MVC.Controllers
 {
@@ -28,8 +29,8 @@ namespace ContosoUniversity_MVC.Controllers
         {
             // configure the column heading hyperlinks.
             ViewData["CurrentSort"] = sortOrder;
-            ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
-            ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
+            ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "LastName_desc" : "";
+            ViewData["DateSortParm"] = sortOrder == "EnrollmentDate" ? "EnrollmentDate_desc" : "EnrollmentDate";
 
             if (searchString != null)
             {
@@ -50,23 +51,47 @@ namespace ContosoUniversity_MVC.Controllers
                 students = students.Where(s => s.LastName.Contains(searchString)
                                             || s.FirstMidName.Contains(searchString));
             }
-            
-            switch (sortOrder)
+            #region Using switch statment to order by asc and desc students list.
+            //switch (sortOrder)
+            //{
+            //    case "LastName_desc":
+            //        students = students.OrderByDescending(s => s.LastName);
+            //        break;
+            //    case "EnrollmentDate_desc":
+            //        students = students.OrderByDescending(s => s.EnrollmentDate);
+            //        break;
+            //    case "EnrollmentDate":
+            //        students = students.OrderBy(s => s.EnrollmentDate);
+            //        break;
+            //    default:
+            //        students = students.OrderBy(s => s.LastName);
+            //        break;
+            //}
+            #endregion
+
+            #region Using dynamic LINQ to order by asc and desc students list
+
+            if (string.IsNullOrEmpty(sortOrder))
             {
-                case "name_desc":
-                    students = students.OrderByDescending(s => s.LastName);
-                    break;
-                case "date_desc":
-                    students = students.OrderByDescending(s => s.EnrollmentDate);
-                    break;
-                case "Date":
-                    students = students.OrderBy(s => s.EnrollmentDate);
-                    break;
-                default:
-                    students = students.OrderBy(s => s.LastName);
-                    break;
+                sortOrder = "LastName";
             }
 
+            bool descending = false;
+            if (sortOrder.EndsWith("_desc"))
+            {
+                sortOrder = sortOrder.Substring(0, sortOrder.Length - 5);
+                descending = true;
+            }
+
+            if (descending)
+            {
+                students = students.OrderByDescending(s => EF.Property<object>(s, sortOrder));
+            }
+            else
+            {
+                students = students.OrderBy(s => EF.Property<object>(s, sortOrder));
+            }
+            #endregion
             int pageSize = 3;
             return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
